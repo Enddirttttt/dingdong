@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js FPS Karambit/Gun Game</title>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%; background: #222; }
+    #info {
+      position: absolute; top: 54px; left: 10px; color: #fff;
+      font-family: sans-serif; background: rgba(0,0,0,0.5);
+      padding: 10px 16px; border-radius: 8px; z-index: 10; user-select: none;
+      transition: opacity 0.3s;
+    }
+    #score {
+      position: absolute; top: 10px; right: 20px; color: #fff;
+      font-family: monospace; font-size: 22px; background: rgba(0,0,0,0.5);
+      padding: 8px 18px; border-radius: 8px; z-index: 10; user-select: none;
+      letter-spacing: 2px;
+      transition: opacity 0.3s;
+    }
+    #fps {
+      position: absolute; top: 10px; left: 12px; color: #fff;
+      font-family: monospace; font-size: 20px; background: rgba(0,0,0,0.5);
+      padding: 7px 15px; border-radius: 8px; z-index: 10; user-select: none;
+      letter-spacing: 2px;
+      transition: opacity 0.3s;
+    }
+    #crosshair {
+      position: absolute; left: 50%; top: 50%; width: 32px; height: 32px;
+      margin-left: -16px; margin-top: -16px; z-index: 20; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.3s;
+    }
+    #crosshair div {
+      position: absolute; background: #fff; border-radius: 2px;
+    }
+    #crosshair .v { width: 2px; height: 18px; left: 15px; top: 7px; }
+    #crosshair .h { width: 18px; height: 2px; left: 7px; top: 15px; }
+    canvas { display: block; }
+    #mainmenu {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(30,40,70,0.93); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 100;
+      transition: opacity 0.4s;
+    }
+    #mainmenu h1 {
+      color: #fff; font-size: 2.7em; font-family: 'Segoe UI', sans-serif; margin-bottom: 32px; letter-spacing: 3px;
+      text-shadow: 0 6px 32px #2196f3aa;
+    }
+    #mainmenu button {
+      font-size: 1.25em; margin: 12px; padding: 13px 44px; border-radius: 8px; border: none;
+      background: #2196f3; color: #fff; cursor: pointer; font-family: inherit; box-shadow: 0 2px 16px #0003;
+      transition: background .2s;
+    }
+    #mainmenu button:hover { background: #1769aa; }
+    .hidden { opacity: 0 !important; pointer-events: none !important; }
+    #score, #info, #fps, #crosshair, #inventory { transition: opacity 0.3s; }
+    #inventory {
+      position: absolute;
+      right: 36px; bottom: 30px; z-index: 30;
+      display: flex; flex-direction: row; gap: 14px;
+      background: rgba(0,0,0,0.45);
+      border-radius: 10px;
+      padding: 9px 18px 11px 18px;
+      user-select: none;
+      box-shadow: 0 2px 8px #0005;
+      font-family: monospace;
+      font-size: 19px;
+    }
+    .inv-slot {
+      width: 44px; height: 44px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; background: rgba(67,67,67,0.23);
+      border: 2px solid #777;
+      box-sizing: border-box; position: relative;
+      cursor: pointer; transition: border 0.12s, background 0.14s;
+    }
+    .inv-selected { border: 2.5px solid #4fc3f7; background: rgba(80,200,255,0.23); }
+    .inv-slot .inv-key {
+      position: absolute; bottom: 3px; right: 7px; font-size: 11px;
+      color: #fff6; font-family: inherit;
+    }
+    .inv-icon {
+      font-size: 27px; pointer-events: none; user-select: none;
+      filter: drop-shadow(0 0 3px #000a);
+    }
+    /* Settings Modal */
+    #settingsModal {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(34, 34, 44, 0.95); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    #settingsWindow {
+      background: #252b35; color: #fff; border-radius: 13px;
+      min-width: 340px; min-height: 320px; max-width: 95vw;
+      padding: 30px 34px 24px 34px; box-shadow: 0 10px 44px #111b;
+      font-family: 'Segoe UI', monospace; font-size: 1.09em;
+      position: relative;
+      display: flex; flex-direction: column;
+      gap: 18px;
+    }
+    #settingsWindow h2 { font-size: 1.3em; margin: 0 0 14px 0; letter-spacing: 2px; }
+    #settingsWindow label { font-weight: bold; margin-right: 8px; }
+    #settingsWindow .row { margin-bottom: 13px; }
+    #settingsWindow input[type="range"] { width: 110px; }
+    #settingsWindow select { font-size: 1em; }
+    #closeSettingsBtn {
+      position: absolute; top: 10px; right: 18px; background: none;
+      border: none; color: #fff; font-size: 1.8em; cursor: pointer;
+    }
+    #keybindsBtn {
+      margin-left: 14px; font-size: .97em; padding: 3px 9px; border-radius: 5px;
+      background: #4fc3f7; color: #fff; border: none; cursor: pointer;
+    }
+    #keybindsBtn:hover { background: #1976d2; }
+    #keybindsModal {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(34, 34, 44, 0.97); z-index: 2000;
+      align-items: center; justify-content: center;
+    }
+    #keybindsWindow {
+      background: #232a33; color: #fff; border-radius: 13px;
+      min-width: 300px; max-width: 95vw; min-height: 200px;
+      padding: 23px 30px 18px 30px; box-shadow: 0 10px 44px #111b;
+      font-family: 'Segoe UI', monospace; font-size: 1.09em;
+      position: relative;
+      display: flex; flex-direction: column;
+      gap: 10px;
+    }
+    #keybindsWindow h2 { font-size: 1.2em; margin: 0 0 10px 0; }
+    #closeKeybindsBtn {
+      position: absolute; top: 10px; right: 15px; background: none;
+      border: none; color: #fff; font-size: 1.6em; cursor: pointer;
+    }
+    .bind-row {
+      display: flex; align-items: center; margin-bottom: 8px;
+    }
+    .bind-row label { min-width: 140px; }
+    .bind-key-btn {
+      margin-left: 13px; font-size: 1.1em; background: #4fc3f7; color: #fff; border: none; border-radius: 5px;
+      padding: 2px 14px; cursor: pointer;
+      transition: background .14s;
+    }
+    .bind-key-btn.active { background: #ffc107; color: #111; }
+    .bind-key-btn:hover:not(.active) { background: #1976d2; }
+  </style>
+</head>
+<body>
+  <div id="mainmenu">
+    <h1>FPS Karambit & Gun Game</h1>
+    <button id="playbtn">Play</button>
+    <button id="settingsbtn">Settings</button>
+  </div>
+  <div id="settingsModal">
+    <div id="settingsWindow">
+      <button id="closeSettingsBtn">&times;</button>
+      <h2>Settings</h2>
+      <div class="row"><label>Mouse Sensitivity:</label>
+        <input type="range" min="0.5" max="2.5" step="0.01" value="1" id="sensrange">
+        <span id="sensval">1.00</span>
+      </div>
+      <div class="row"><label>Sound:</label>
+        <input type="checkbox" id="soundtoggle" checked>
+      </div>
+      <div class="row">
+        <label>Graphics:</label>
+        <select id="graphicsMode">
+          <option value="low">Low</option>
+          <option value="high">High</option>
+        </select>
+        <span id="graphicsModeLabel">Low</span>
+      </div>
+      <div class="row">
+        <label>Inventory Keys:</label>
+        <span id="invKey1Label">1</span> (Knife),
+        <span id="invKey2Label">2</span> (Gun)
+      </div>
+      <button id="keybindsBtn">Keybinds</button>
+    </div>
+  </div>
+  <div id="keybindsModal">
+    <div id="keybindsWindow">
+      <button id="closeKeybindsBtn">&times;</button>
+      <h2>Change Keybinds</h2>
+      <div class="bind-row">
+        <label>Inventory Slot 1 (Knife):</label>
+        <button class="bind-key-btn" id="bindInv1Btn">1</button>
+      </div>
+      <div class="bind-row">
+        <label>Inventory Slot 2 (Gun):</label>
+        <button class="bind-key-btn" id="bindInv2Btn">2</button>
+      </div>
+      <div class="bind-row">
+        <label>Inspect:</label>
+        <button class="bind-key-btn" id="bindInspectBtn">F</button>
+      </div>
+    </div>
+  </div>
+  <div id="fps">FPS: 0</div>
+  <div id="info">
+    <b>S/W:</b> Forward/Backward<br>
+    <b>A/D:</b> Strafe<br>
+    <b>Space:</b> Jump<br>
+    <b>Mouse:</b> Look<br>
+    <b>F:</b> Inspect<br>
+    <b>Left Click:</b> Use/Fire<br>
+    <b>Inventory:</b> <span id="infoInvKeys">1/2</span><br>
+    <b>Click to lock pointer</b>
+  </div>
+  <div id="score">Score: 0</div>
+  <div id="crosshair">
+    <div class="v"></div>
+    <div class="h"></div>
+  </div>
+  <div id="inventory">
+    <div class="inv-slot inv-selected" id="invSlot1">
+      <span class="inv-icon" id="invIcon1">&#129686;</span>
+      <span class="inv-key" id="invSlot1Key">1</span>
+    </div>
+    <div class="inv-slot" id="invSlot2">
+      <span class="inv-icon" id="invIcon2">&#128299;</span>
+      <span class="inv-key" id="invSlot2Key">2</span>
+    </div>
+  </div>
+  <script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+  <script>
+    // ----------- SETTINGS & KEYBINDS LOGIC -----------
+    let mouseSensitivity = 1.0;
+    let soundOn = true;
+    let graphicsHigh = false;
+    let invKey1 = '1', invKey2 = '2', inspectKey = 'f';
+    let invSlotCount = 2;
+
+    // Inventory slot keys to update UI
+    function updateInvKeyLabels() {
+      document.getElementById('invKey1Label').textContent = invKey1.toUpperCase();
+      document.getElementById('invKey2Label').textContent = invKey2.toUpperCase();
+      document.getElementById('invSlot1Key').textContent = invKey1.toUpperCase();
+      document.getElementById('invSlot2Key').textContent = invKey2.toUpperCase();
+      document.getElementById('infoInvKeys').textContent = `${invKey1.toUpperCase()}/${invKey2.toUpperCase()}`;
+      document.getElementById('bindInv1Btn').textContent = invKey1.toUpperCase();
+      document.getElementById('bindInv2Btn').textContent = invKey2.toUpperCase();
+      document.getElementById('bindInspectBtn').textContent = inspectKey.toUpperCase();
+    }
+    updateInvKeyLabels();
+
+    // Settings Modal Logic
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsWindow = document.getElementById('settingsWindow');
+    const settingsBtn = document.getElementById('settingsbtn');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    const sensRange = document.getElementById('sensrange');
+    const sensVal = document.getElementById('sensval');
+    const soundToggle = document.getElementById('soundtoggle');
+    const graphicsMode = document.getElementById('graphicsMode');
+    const graphicsModeLabel = document.getElementById('graphicsModeLabel');
+    const keybindsBtn = document.getElementById('keybindsBtn');
+    const mainMenu = document.getElementById('mainmenu');
+
+    sensRange.oninput = function() {
+      mouseSensitivity = parseFloat(this.value);
+      sensVal.textContent = mouseSensitivity.toFixed(2);
+    };
+    soundToggle.onchange = function() { soundOn = !!this.checked; };
+    graphicsMode.onchange = function() {
+      graphicsHigh = this.value === "high";
+      graphicsModeLabel.textContent = graphicsHigh ? "High" : "Low";
+      setGraphicsMode(graphicsHigh);
+    };
+
+    settingsBtn.onclick = () => {
+      settingsModal.style.display = "flex";
+    };
+    closeSettingsBtn.onclick = () => { settingsModal.style.display = "none"; };
+    keybindsBtn.onclick = () => {
+      document.getElementById('keybindsModal').style.display = "flex";
+      keybindsActive = true;
+    };
+    document.getElementById('closeKeybindsBtn').onclick = () => {
+      document.getElementById('keybindsModal').style.display = "none";
+      keybindsActive = false;
+    };
+
+    // Keybinds logic
+    let keybindsActive = false, awaitingBind = null;
+    function startBind(btn, name) {
+      awaitingBind = name;
+      let allBtns = document.querySelectorAll('.bind-key-btn');
+      allBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      btn.textContent = '...';
+    }
+    document.getElementById('bindInv1Btn').onclick = function() { startBind(this, "inv1"); };
+    document.getElementById('bindInv2Btn').onclick = function() { startBind(this, "inv2"); };
+    document.getElementById('bindInspectBtn').onclick = function() { startBind(this, "inspect"); };
+
+    window.addEventListener('keydown', function(e) {
+      if (!keybindsActive || !awaitingBind) return;
+      let key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (awaitingBind === "inv1") invKey1 = key;
+      else if (awaitingBind === "inv2") invKey2 = key;
+      else if (awaitingBind === "inspect") inspectKey = key;
+      updateInvKeyLabels();
+      let allBtns = document.querySelectorAll('.bind-key-btn');
+      allBtns.forEach(b => b.classList.remove('active'));
+      awaitingBind = null;
+      // Save and close
+      setTimeout(()=>{document.getElementById('keybindsModal').style.display = "none"; keybindsActive = false;}, 150);
+    });
+
+    // ----------- FPS & UI LOGIC -----------
+    const fpsDiv = document.getElementById('fps');
+    let frameCount = 0, lastFps = 0, fpsTime = performance.now();
+    function setUIVisible(vis) {
+      document.getElementById('info').style.opacity = vis ? "1" : "0";
+      document.getElementById('score').style.opacity = vis ? "1" : "0";
+      document.getElementById('crosshair').style.opacity = vis ? "1" : "0";
+      fpsDiv.style.opacity = vis ? "1" : "0";
+      document.getElementById('inventory').style.opacity = vis ? "1" : "0";
+    }
+    setUIVisible(false);
+
+    // ----------- POINTER LOCK CONTROLS -----------
+    (function () {
+      function PointerLockControls(camera, domElement) {
+        this.domElement = domElement || document.body;
+        this.isLocked = false;
+        this.minPolarAngle = 0;
+        this.maxPolarAngle = Math.PI;
+        var scope = this;
+        var euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        var PI_2 = Math.PI / 2;
+        var vec = new THREE.Vector3();
+        function onMouseMove(event) {
+          if (scope.isLocked === false) return;
+          var movementX = (event.movementX || event.mozMovementX || event.webkitMovementX || 0) * mouseSensitivity;
+          var movementY = (event.movementY || event.mozMovementY || event.webkitMovementY || 0) * mouseSensitivity;
+          euler.setFromQuaternion(camera.quaternion);
+          euler.y -= movementX * 0.002;
+          euler.x -= movementY * 0.002;
+          euler.x = Math.max(PI_2 - scope.maxPolarAngle, Math.min(PI_2 - scope.minPolarAngle, euler.x));
+          camera.quaternion.setFromEuler(euler);
+        }
+        function onPointerlockChange() {
+          if (document.pointerLockElement === scope.domElement) {
+            scope.isLocked = true;
+            setUIVisible(true);
+          } else {
+            scope.isLocked = false;
+            setUIVisible(false);
+            if (mainMenu.style.display === "none") {
+              mainMenu.style.display = "flex";
+              requestAnimationFrame(() => mainMenu.classList.remove('hidden'));
+            }
+          }
+        }
+        function onPointerlockError() {
+          console.error('THREE.PointerLockControls: Unable to use Pointer Lock API');
+        }
+        this.connect = function () {
+          document.addEventListener('mousemove', onMouseMove, false);
+          document.addEventListener('pointerlockchange', onPointerlockChange, false);
+          document.addEventListener('pointerlockerror', onPointerlockError, false);
+        };
+        this.disconnect = function () {
+          document.removeEventListener('mousemove', onMouseMove, false);
+          document.removeEventListener('pointerlockchange', onPointerlockChange, false);
+          document.removeEventListener('pointerlockerror', onPointerlockError, false);
+        };
+        this.dispose = function () { this.disconnect(); };
+        this.getObject = function () { return camera; };
+        this.getDirection = function () {
+          var direction = new THREE.Vector3(0, 0, -1);
+          return function (v) { return v.copy(direction).applyQuaternion(camera.quaternion); };
+        }();
+        this.moveForward = function (distance) {
+          vec.setFromMatrixColumn(camera.matrix, 0);
+          vec.crossVectors(camera.up, vec);
+          camera.position.addScaledVector(vec, distance);
+        };
+        this.moveRight = function (distance) {
+          vec.setFromMatrixColumn(camera.matrix, 0);
+          camera.position.addScaledVector(vec, distance);
+        };
+        this.lock = function () { this.domElement.requestPointerLock(); };
+        this.unlock = function () { document.exitPointerLock(); };
+        this.connect();
+      }
+      THREE.PointerLockControls = PointerLockControls;
+    })();
+
+    // ----------- TEXTURE GENERATORS (HI/LO) -----------
+    function makeCheckerboard(size, squares) {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const sq = size / squares;
+      for (let y = 0; y < squares; ++y) {
+        for (let x = 0; x < squares; ++x) {
+          ctx.fillStyle = (x + y) % 2 === 0 ? '#bdbdbd' : '#757575';
+          ctx.fillRect(x * sq, y * sq, sq, sq);
+        }
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+    function makeFencePlanks(size, planks) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#a97c50';
+      ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = '#7b5a36';
+      ctx.lineWidth = Math.max(2, size/64);
+      for (let i = 1; i < planks; ++i) {
+        ctx.beginPath();
+        ctx.moveTo(i * size / planks, 0);
+        ctx.lineTo(i * size / planks, size);
+        ctx.stroke();
+      }
+      for (let i = 0; i < planks; ++i) {
+        ctx.beginPath();
+        ctx.arc((i + 0.5) * size / planks, size / 2, size / 12, 0, Math.PI * 2);
+        ctx.fillStyle = '#6b4b2a';
+        ctx.fill();
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+    function makeBullseye(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(size/2, size/2, size/2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ff3333'; ctx.beginPath(); ctx.arc(size/2, size/2, size/2.5, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(size/2, size/2, size/4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ff3333'; ctx.beginPath(); ctx.arc(size/2, size/2, size/8, 0, Math.PI*2); ctx.fill();
+      return new THREE.CanvasTexture(canvas);
+    }
+    function makeBullseyeHi(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(size/2, size/2, size/2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ff3333';
+      ctx.beginPath(); ctx.arc(size/2, size/2, size/2.3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(size/2, size/2, size/3.0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ff3333';
+      ctx.beginPath(); ctx.arc(size/2, size/2, size/4.2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(size/2, size/2, size/7, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = "#b10000";
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(size/2, size/2, size/2.3, 0, Math.PI*2); ctx.stroke();
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // ----------- SCENE SETUP -----------
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x6ec6ff);
+
+    // --- Camera ---
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.7, 0);
+
+    // --- Renderer ---
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // --- Lighting ---
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 20, 10);
+    scene.add(dirLight);
+
+    // --- Materials and Texture Handles ---
+    const groundSize = 50;
+    const groundSquares = 10;
+    let groundGeo, groundMat, ground;
+    let fenceMat;
+    let bullseyeTex, bullseyeTexHi;
+    let fenceMeshes = [];
+
+    function setGraphicsMode(high) {
+      // Update ground
+      let tex = high ? makeCheckerboard(2048, groundSquares*2) : makeCheckerboard(512, groundSquares);
+      ground.material.map = tex;
+      ground.material.needsUpdate = true;
+      // Update fences
+      let fenceTex = high ? makeFencePlanks(1024, 16) : makeFencePlanks(256, 8);
+      fenceMat.map = fenceTex;
+      fenceMat.needsUpdate = true;
+      for (let mesh of fenceMeshes) {
+        mesh.material.map = fenceTex;
+        mesh.material.needsUpdate = true;
+      }
+      // Update targets
+      for (let t of targets) {
+        t.material.map = high ? bullseyeTexHi : bullseyeTex;
+        t.material.needsUpdate = true;
+      }
+    }
+
+    // --- Ground Plane ---
+    groundGeo = new THREE.PlaneGeometry(groundSize, groundSize);
+    groundMat = new THREE.MeshPhongMaterial({
+      map: makeCheckerboard(512, groundSquares),
+      side: THREE.DoubleSide
+    });
+    ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI/2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // --- Fences (plank texture) ---
+    const fenceHeight = 2.2;
+    const fenceThickness = 0.2;
+    fenceMat = new THREE.MeshPhongMaterial({
+      map: makeFencePlanks(256, 8),
+      color: 0xffffff
+    });
+    function addFence(x, z, w, d) {
+      const geo = new THREE.BoxGeometry(w, fenceHeight, d);
+      const mesh = new THREE.Mesh(geo, fenceMat);
+      mesh.position.set(x, fenceHeight/2, z);
+      scene.add(mesh);
+      fenceMeshes.push(mesh);
+    }
+    addFence(0, -groundSize/2 + fenceThickness/2, groundSize + fenceThickness*2, fenceThickness);
+    addFence(0, groundSize/2 - fenceThickness/2, groundSize + fenceThickness*2, fenceThickness);
+    addFence(-groundSize/2 + fenceThickness/2, 0, fenceThickness, groundSize + fenceThickness*2);
+    addFence(groundSize/2 - fenceThickness/2, 0, fenceThickness, groundSize + fenceThickness*2);
+
+    // ----------- GAME STATE -----------
+    let inventory = [
+      { type: "karambit", name: "Karambit" },
+      { type: "gun", name: "Gun" }
+    ];
+    let selectedSlot = 0;
+
+    // ----------- INVENTORY UI LOGIC -----------
+    function selectSlot(n) {
+      if (n < 0 || n >= inventory.length) return;
+      selectedSlot = n;
+      document.getElementById('invSlot1').classList.toggle('inv-selected', selectedSlot === 0);
+      document.getElementById('invSlot2').classList.toggle('inv-selected', selectedSlot === 1);
+      updateHeldModel();
+    }
+    document.getElementById('invSlot1').onclick = () => selectSlot(0);
+    document.getElementById('invSlot2').onclick = () => selectSlot(1);
+
+    // ----------- POINTER LOCK CONTROLS -----------
+    const controls = new THREE.PointerLockControls(camera, document.body);
+    document.body.addEventListener('click', () => {
+      if (mainMenu.style.display === "none" && settingsModal.style.display === "none" && !keybindsActive)
+        controls.lock();
+    });
+
+    // ----------- MOVEMENT STATE -----------
+    const move = { forward: false, backward: false, left: false, right: false, jump: false };
+    let velocity = new THREE.Vector3();
+    const speed = 6;
+    let canJump = false;
+    let yVelocity = 0;
+    const gravity = 18;
+    const jumpStrength = 7;
+
+    window.addEventListener('keydown', (e) => {
+      if (keybindsActive) return;
+      let k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (k === invKey1) { selectSlot(0); return; }
+      if (k === invKey2) { selectSlot(1); return; }
+      if (k === inspectKey) { inspectHeld(); return; }
+      switch(e.code) {
+        case 'KeyS': case 'ArrowDown': move.forward = true; break;
+        case 'KeyW': case 'ArrowUp': move.backward = true; break;
+        case 'KeyA': case 'ArrowLeft': move.left = true; break;
+        case 'KeyD': case 'ArrowRight': move.right = true; break;
+        case 'Space':
+          if (canJump) { yVelocity = jumpStrength; canJump = false; }
+          break;
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (keybindsActive) return;
+      let k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      switch(e.code) {
+        case 'KeyS': case 'ArrowDown': move.forward = false; break;
+        case 'KeyW': case 'ArrowUp': move.backward = false; break;
+        case 'KeyA': case 'ArrowLeft': move.left = false; break;
+        case 'KeyD': case 'ArrowRight': move.right = false; break;
+      }
+    });
+
+    // ----------- WALKING SOUND -----------
+    let walkAudioCtx = null, walkOsc = null, walkGain = null, walking = false, walkLoopT = 0, lastFoot = 0, lastStepTime = 0;
+    function playStepSound() {
+      if (!soundOn) return;
+      if (!walkAudioCtx) walkAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      let o = walkAudioCtx.createOscillator();
+      let g = walkAudioCtx.createGain();
+      o.type = "triangle";
+      o.frequency.value = 140 + Math.random()*6;
+      g.gain.value = 0.17 + Math.random()*0.03;
+      o.connect(g); g.connect(walkAudioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, walkAudioCtx.currentTime + 0.08);
+      o.stop(walkAudioCtx.currentTime + 0.09);
+    }
+
+    // ----------- HELD MODELS: KARMBIT & GUN -----------
+    const heldGroup = new THREE.Group();
+    camera.add(heldGroup);
+    scene.add(camera);
+
+    // --- Karambit model (curved blade, ring, handle) ---
+    const karambit = new THREE.Group();
+    // Handle: arc (torus), color: black
+    const karTorusGeo = new THREE.TorusGeometry(0.18, 0.055, 18, 75, Math.PI * 1.0);
+    const karTorusMat = new THREE.MeshPhongMaterial({color: 0x191a1b, shininess: 18});
+    const karTorus = new THREE.Mesh(karTorusGeo, karTorusMat);
+    karTorus.position.set(0, -0.10, 0);
+    karTorus.rotation.z = Math.PI/2.1;
+    karTorus.rotation.y = Math.PI/12;
+    karambit.add(karTorus);
+
+    // Ring at end
+    const karRingGeo = new THREE.TorusGeometry(0.07, 0.022, 18, 32);
+    const karRingMat = new THREE.MeshPhongMaterial({color: 0x363a42, shininess: 33});
+    const karRing = new THREE.Mesh(karRingGeo, karRingMat);
+    karRing.position.set(-0.16, -0.15, 0);
+    karRing.rotation.x = Math.PI/3.5;
+    karambit.add(karRing);
+
+    // Curved blade: arc of cone segments
+    let curveBlade = new THREE.Group();
+    let arc = Math.PI * 1.10, segs = 14;
+    for (let i = 0; i < segs; ++i) {
+      let phi = i / segs * arc - Math.PI/2.5;
+      let geo = new THREE.ConeGeometry(0.027 + 0.006*Math.sin(i/segs*Math.PI), 0.11, 10, 1, true);
+      let mat = new THREE.MeshPhongMaterial({color: i<9?0xe0e3f4:0x5eb6e9, shininess: 160, specular: 0xffffff});
+      let mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(Math.cos(phi)*0.21, Math.sin(phi)*0.21+0.06, 0);
+      mesh.rotation.z = phi + Math.PI/2.1;
+      mesh.rotation.x = Math.PI/2 + 0.09*i;
+      curveBlade.add(mesh);
+    }
+    karambit.add(curveBlade);
+
+    // Default karambit pos/rot
+    const karambitDefaultPos = new THREE.Vector3(0.5, -0.43, -0.8);
+    const karambitDefaultRot = new THREE.Euler(0.18, 1.21, 0.8);
+    karambit.position.copy(karambitDefaultPos);
+    karambit.rotation.copy(karambitDefaultRot);
+
+    // --- Gun model (simplified glock-like) ---
+    const gun = new THREE.Group();
+    // Slide
+    const slideGeo = new THREE.BoxGeometry(0.23, 0.05, 0.045);
+    const slideMat = new THREE.MeshPhongMaterial({color: 0x353a3d, shininess: 90});
+    const slide = new THREE.Mesh(slideGeo, slideMat);
+    slide.position.set(0, 0.07, 0);
+    gun.add(slide);
+
+    // Frame
+    const frameGeo = new THREE.BoxGeometry(0.21, 0.06, 0.037);
+    const frameMat = new THREE.MeshPhongMaterial({color: 0x222225, shininess: 40});
+    const frame = new THREE.Mesh(frameGeo, frameMat);
+    frame.position.set(0, 0.025, 0);
+    gun.add(frame);
+
+    // Trigger guard
+    const tgGeo = new THREE.TorusGeometry(0.027, 0.009, 10, 18, Math.PI);
+    const tgMat = new THREE.MeshPhongMaterial({color: 0x222225, shininess: 40});
+    const tg = new THREE.Mesh(tgGeo, tgMat);
+    tg.position.set(0.055, -0.007, 0);
+    tg.rotation.z = Math.PI/2;
+    tg.rotation.y = Math.PI/3.7;
+    gun.add(tg);
+
+    // Grip
+    const gripGeo = new THREE.BoxGeometry(0.05, 0.13, 0.03);
+    const gripMat = new THREE.MeshPhongMaterial({color: 0x23292e, shininess: 20});
+    const grip = new THREE.Mesh(gripGeo, gripMat);
+    grip.position.set(0.07, -0.035, 0);
+    grip.rotation.z = Math.PI/7;
+    gun.add(grip);
+
+    // Gun default pos/rot
+    const gunDefaultPos = new THREE.Vector3(0.43, -0.37, -0.77);
+    const gunDefaultRot = new THREE.Euler(0.17, 1.23, 0.7);
+    gun.position.copy(gunDefaultPos);
+    gun.rotation.copy(gunDefaultRot);
+
+    // --- Update held model ---
+    function updateHeldModel() {
+      heldGroup.clear();
+      if (inventory[selectedSlot].type === "karambit") {
+        heldGroup.add(karambit);
+      } else if (inventory[selectedSlot].type === "gun") {
+        heldGroup.add(gun);
+      }
+    }
+    updateHeldModel();
+
+    // ----------- HELD ANIMATIONS -----------
+    // Karambit:
+    let inspecting = false, inspectStart = 0;
+    const inspectDuration = 0.7, inspectReturnDuration = 0.45;
+    let swinging = false, swingStart = 0;
+    const swingDuration = 0.12, swingReturnDuration = 0.085;
+    let swingCooldown = 0, swingTotalCooldown = 0.19;
+
+    // Gun:
+    let reloading = false, reloadStart = 0, reloadDuration = 0.7;
+    let shooting = false, shootStart = 0;
+    const shootDuration = 0.13, shootReturnDuration = 0.085;
+    let shootCooldown = 0, shootTotalCooldown = 0.22;
+    let bullets = [];
+
+    // ----------- MOUSE & INSPECT -----------
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        if (inventory[selectedSlot].type === "karambit") swingKarambit();
+        else if (inventory[selectedSlot].type === "gun") shootGun();
+      }
+    });
+    function inspectHeld() {
+      if (inventory[selectedSlot].type === "karambit") inspectKarambit();
+      else if (inventory[selectedSlot].type === "gun") reloadGun();
+    }
+    function inspectKarambit() {
+      if (inspecting || swinging) return;
+      inspecting = true;
+      inspectStart = performance.now() / 1000;
+    }
+    function swingKarambit() {
+      if (swinging || inspecting || swingCooldown > 0) return;
+      swinging = true;
+      swingStart = performance.now() / 1000;
+      swingCooldown = swingTotalCooldown;
+      setTimeout(tryHitTarget, swingDuration * 1000 * 0.7);
+    }
+    function reloadGun() {
+      if (reloading || shooting) return;
+      reloading = true;
+      reloadStart = performance.now() / 1000;
+    }
+    function shootGun() {
+      if (shooting || reloading || shootCooldown > 0) return;
+      shooting = true;
+      shootStart = performance.now() / 1000;
+      shootCooldown = shootTotalCooldown;
+      fireBullet();
+    }
+
+    // ----------- GUN: BULLET LOGIC -----------
+    function fireBullet() {
+      // ray from camera
+      let origin = new THREE.Vector3(); camera.getWorldPosition(origin);
+      let dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).normalize();
+      let bullet = {
+        mesh: new THREE.Mesh(new THREE.SphereGeometry(0.021, 9, 7), new THREE.MeshBasicMaterial({color:0xffee00})),
+        pos: origin.clone(),
+        dir: dir.clone(),
+        lifetime: 1.2, // seconds
+        born: performance.now()/1000
+      };
+      bullet.mesh.position.copy(origin);
+      scene.add(bullet.mesh);
+      bullets.push(bullet);
+    }
+
+    // ----------- SOUND: HIT, SHOOT, WALK -----------
+    let audioCtx = null;
+    function playHitSound() {
+      if (!soundOn) return;
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "square";
+      o.frequency.value = 520 + Math.random() * 120;
+      g.gain.value = 0.16;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.16);
+      o.stop(audioCtx.currentTime + 0.16);
+    }
+    function playGunSound() {
+      if (!soundOn) return;
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "triangle";
+      o.frequency.value = 180 + Math.random()*45;
+      g.gain.value = 0.31;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.065);
+      o.stop(audioCtx.currentTime + 0.07);
+    }
+    function playReloadSound() {
+      if (!soundOn) return;
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "sine";
+      o.frequency.value = 210 + Math.random()*18;
+      g.gain.value = 0.2;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.19);
+      o.stop(audioCtx.currentTime + 0.2);
+    }
+
+    // ----------- TARGETS + BREAKING ANIMATION -----------
+    const targets = [];
+    const targetSize = 0.5;
+    const targetGeo = new THREE.BoxGeometry(targetSize, targetSize, targetSize);
+    bullseyeTex = makeBullseye(128); bullseyeTexHi = makeBullseyeHi(420);
+
+    function spawnTarget(mesh) {
+      let angle = Math.random() * Math.PI * 2;
+      let radius = 6 + Math.random() * 15;
+      let x = Math.cos(angle) * radius;
+      let z = Math.sin(angle) * radius;
+      mesh.position.set(x, targetSize/2, z);
+      mesh.visible = true;
+      mesh.userData.state = 'idle';
+      mesh.userData.breakStart = 0;
+      mesh.material.opacity = 1;
+      mesh.scale.set(1,1,1);
+      mesh.material.transparent = false;
+      mesh.material.map = graphicsHigh ? bullseyeTexHi : bullseyeTex;
+      mesh.material.needsUpdate = true;
+    }
+    function spawnTargets(n) {
+      for (let i = 0; i < n; ++i) {
+        let mat = new THREE.MeshPhongMaterial({map: bullseyeTex});
+        let mesh = new THREE.Mesh(targetGeo, mat);
+        mesh.userData.state = 'idle';
+        mesh.userData.breakStart = 0;
+        spawnTarget(mesh);
+        scene.add(mesh);
+        targets.push(mesh);
+      }
+    }
+    spawnTargets(8);
+
+    // ----------- SCORE COUNTER -----------
+    let score = 0;
+    const scoreDiv = document.getElementById('score');
+    function addScore() {
+      score++;
+      scoreDiv.textContent = "Score: " + score;
+    }
+
+    // ----------- HIT DETECTION -----------
+    function tryHitTarget() {
+      const rayOrigin = new THREE.Vector3();
+      camera.getWorldPosition(rayOrigin);
+      const rayDir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).normalize();
+      const reach = 2.2;
+      for (let i = 0; i < targets.length; ++i) {
+        const target = targets[i];
+        if (!target.visible || target.userData.state!=='idle') continue;
+        const toTarget = new THREE.Vector3().subVectors(target.position, rayOrigin);
+        const proj = toTarget.dot(rayDir);
+        if (proj < 0 || proj > reach) continue;
+        const closest = new THREE.Vector3().copy(rayOrigin).addScaledVector(rayDir, proj);
+        const dist = closest.distanceTo(target.position);
+        if (dist < targetSize * 0.7) {
+          // Start breaking animation
+          target.userData.state = 'breaking';
+          target.userData.breakStart = performance.now() / 1000;
+          playHitSound();
+          addScore();
+        }
+      }
+    }
+
+    // ----------- BULLET HIT DETECTION -----------
+    function bulletHitTarget(origin, dir) {
+      for (let i = 0; i < targets.length; ++i) {
+        const target = targets[i];
+        if (!target.visible || target.userData.state!=='idle') continue;
+        // Ray/AABB intersect (approx)
+        let tpos = target.position;
+        let toTarget = new THREE.Vector3().subVectors(tpos, origin);
+        let proj = toTarget.dot(dir);
+        if (proj < 0 || proj > 28) continue;
+        let closest = new THREE.Vector3().copy(origin).addScaledVector(dir, proj);
+        let dist = closest.distanceTo(tpos);
+        if (dist < targetSize * 0.68) {
+          target.userData.state = 'breaking';
+          target.userData.breakStart = performance.now() / 1000;
+          playHitSound();
+          addScore();
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // ----------- CAMERA BOBBING -----------
+    let walkTime = 0;
+    const bobFreq = 8;
+    const bobAmp = 0.07;
+
+    // ----------- ANIMATION LOOP -----------
+    let prevTime = performance.now() / 1000;
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // FPS Counter
+      frameCount++;
+      const nowPerf = performance.now();
+      if (nowPerf - fpsTime >= 500) {
+        lastFps = Math.round(frameCount * 1000 / (nowPerf - fpsTime));
+        fpsDiv.textContent = "FPS: " + lastFps;
+        frameCount = 0; fpsTime = nowPerf;
+      }
+
+      const time = performance.now() / 1000;
+      const delta = Math.min(time - prevTime, 0.05);
+      prevTime = time;
+
+      // --- Player Movement ---
+      let wasWalking = walking;
+      walking = false;
+      if (controls.isLocked) {
+        velocity.set(0,0,0);
+        if (move.forward) velocity.z -= 1;
+        if (move.backward) velocity.z += 1;
+        if (move.left) velocity.x -= 1;
+        if (move.right) velocity.x += 1;
+        let isMoving = velocity.length() > 0;
+        if (isMoving) velocity.normalize().multiplyScalar(speed * delta);
+
+        let dir = new THREE.Vector3();
+        controls.getDirection(dir);
+        dir.y = 0; dir.normalize();
+        let right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0,1,0)).normalize();
+
+        camera.position.addScaledVector(dir, velocity.z);
+        camera.position.addScaledVector(right, velocity.x);
+
+        // Gravity & Jump
+        yVelocity -= gravity * delta;
+        camera.position.y += yVelocity * delta;
+
+        // Clamp player to ground area (inside fences)
+        const margin = 1.2;
+        camera.position.x = Math.max(-groundSize/2+margin, Math.min(groundSize/2-margin, camera.position.x));
+        camera.position.z = Math.max(-groundSize/2+margin, Math.min(groundSize/2-margin, camera.position.z));
+
+        // Ground collision
+        if (camera.position.y < 1.7) {
+          camera.position.y = 1.7;
+          yVelocity = 0;
+          canJump = true;
+        }
+
+        // Camera bobbing & walking sound
+        if (isMoving && camera.position.y <= 1.71) {
+          walkTime += delta;
+          walking = true;
+        } else {
+          walkTime = 0;
+        }
+        let bobOffset = (isMoving ? Math.abs(Math.sin(walkTime * bobFreq) * bobAmp) : 0);
+        camera.position.y += bobOffset;
+
+        // Walk step sound
+        let stepInterval = (inventory[selectedSlot].type === "karambit") ? 0.29 : 0.31;
+        if (walking && walkTime > 0.17) {
+          let cycle = Math.floor(walkTime / stepInterval);
+          if (cycle !== lastFoot) {
+            playStepSound();
+            lastFoot = cycle;
+          }
+        } else {
+          lastFoot = 0;
+        }
+      }
+
+      // --- Karambit Animation ---
+      if (inventory[selectedSlot].type === "karambit") {
+        if (inspecting) {
+          const now = performance.now() / 1000;
+          const elapsed = now - inspectStart;
+          if (elapsed < 0.7) {
+            const t = Math.sin((elapsed / 0.7) * Math.PI/2);
+            const inspectPos = new THREE.Vector3(0.02, -0.08, -0.42);
+            const inspectRot = new THREE.Euler(0.12, 0.1, 0.92 * Math.sin(t * Math.PI));
+            karambit.position.lerpVectors(karambitDefaultPos, inspectPos, t);
+            karambit.rotation.set(
+              THREE.MathUtils.lerp(karambitDefaultRot.x, inspectRot.x, t),
+              THREE.MathUtils.lerp(karambitDefaultRot.y, inspectRot.y, t),
+              THREE.MathUtils.lerp(karambitDefaultRot.z, inspectRot.z, t)
+            );
+          } else if (elapsed < 1.2) {
+            const t = (elapsed - 0.7) / 0.5;
+            const inspectPos = new THREE.Vector3(0.02, -0.08, -0.42);
+            const inspectRot = new THREE.Euler(0.12, 0.1, 0.92);
+            karambit.position.lerpVectors(inspectPos, karambitDefaultPos, t);
+            karambit.rotation.set(
+              THREE.MathUtils.lerp(inspectRot.x, karambitDefaultRot.x, t),
+              THREE.MathUtils.lerp(inspectRot.y, karambitDefaultRot.y, t),
+              THREE.MathUtils.lerp(inspectRot.z, karambitDefaultRot.z, t)
+            );
+          } else {
+            karambit.position.copy(karambitDefaultPos);
+            karambit.rotation.copy(karambitDefaultRot);
+            inspecting = false;
+          }
+        } else if (swinging) {
+          const now = performance.now() / 1000;
+          const elapsed = now - swingStart;
+          if (elapsed < swingDuration) {
+            const t = elapsed / swingDuration;
+            const swingPos = new THREE.Vector3(0.21, -0.26, -0.56 + 0.1 * Math.sin(t * Math.PI));
+            const swingRot = new THREE.Euler(
+              0.0 + 0.7 * Math.sin(t * Math.PI),
+              0.7 + 0.23 * Math.sin(t * Math.PI),
+              1.27 - 0.7 * Math.sin(t * Math.PI)
+            );
+            karambit.position.lerpVectors(karambitDefaultPos, swingPos, t);
+            karambit.rotation.set(
+              THREE.MathUtils.lerp(karambitDefaultRot.x, swingRot.x, t),
+              THREE.MathUtils.lerp(karambitDefaultRot.y, swingRot.y, t),
+              THREE.MathUtils.lerp(karambitDefaultRot.z, swingRot.z, t)
+            );
+          } else if (elapsed < swingDuration + swingReturnDuration) {
+            const t = (elapsed - swingDuration) / swingReturnDuration;
+            const swingPos = new THREE.Vector3(0.21, -0.26, -0.56);
+            const swingRot = new THREE.Euler(0.7, 1.0, 0.69);
+            karambit.position.lerpVectors(swingPos, karambitDefaultPos, t);
+            karambit.rotation.set(
+              THREE.MathUtils.lerp(swingRot.x, karambitDefaultRot.x, t),
+              THREE.MathUtils.lerp(swingRot.y, karambitDefaultRot.y, t),
+              THREE.MathUtils.lerp(swingRot.z, karambitDefaultRot.z, t)
+            );
+          } else {
+            karambit.position.copy(karambitDefaultPos);
+            karambit.rotation.copy(karambitDefaultRot);
+            swinging = false;
+          }
+        } else {
+          if (swingCooldown > 0) {
+            swingCooldown -= delta;
+            if (swingCooldown < 0) swingCooldown = 0;
+          }
+        }
+      }
+
+      // --- Gun Animation ---
+      if (inventory[selectedSlot].type === "gun") {
+        if (reloading) {
+          const now = performance.now() / 1000;
+          const elapsed = now - reloadStart;
+          if (elapsed < reloadDuration) {
+            // Animate slide back & tilt down
+            const t = Math.sin((elapsed/reloadDuration)*Math.PI/2);
+            gun.position.lerpVectors(gunDefaultPos, new THREE.Vector3(0.38, -0.52, -0.82), t);
+            gun.rotation.set(
+              THREE.MathUtils.lerp(gunDefaultRot.x, 0.77, t),
+              THREE.MathUtils.lerp(gunDefaultRot.y, 1.20, t),
+              THREE.MathUtils.lerp(gunDefaultRot.z, 0.4, t)
+            );
+            if (t > 0.5 && !gunReloaded) { playReloadSound(); gunReloaded = true; }
+          } else {
+            gun.position.copy(gunDefaultPos);
+            gun.rotation.copy(gunDefaultRot);
+            reloading = false; gunReloaded = false;
+          }
+        } else if (shooting) {
+          const now = performance.now() / 1000;
+          const elapsed = now - shootStart;
+          if (elapsed < shootDuration) {
+            const t = elapsed / shootDuration;
+            // Slide moves back, gun recoils up and back
+            gun.position.lerpVectors(gunDefaultPos, new THREE.Vector3(gunDefaultPos.x-0.01, gunDefaultPos.y+0.01, gunDefaultPos.z-0.04), t);
+            gun.rotation.set(
+              THREE.MathUtils.lerp(gunDefaultRot.x, gunDefaultRot.x+0.22, t),
+              gunDefaultRot.y,
+              gunDefaultRot.z
+            );
+            if (!gunShotSounded) { playGunSound(); gunShotSounded = true; }
+          } else if (elapsed < shootDuration + shootReturnDuration) {
+            const t = (elapsed - shootDuration) / shootReturnDuration;
+            gun.position.lerpVectors(new THREE.Vector3(gunDefaultPos.x-0.01, gunDefaultPos.y+0.01, gunDefaultPos.z-0.04), gunDefaultPos, t);
+            gun.rotation.set(
+              THREE.MathUtils.lerp(gunDefaultRot.x+0.22, gunDefaultRot.x, t),
+              gunDefaultRot.y,
+              gunDefaultRot.z
+            );
+          } else {
+            gun.position.copy(gunDefaultPos);
+            gun.rotation.copy(gunDefaultRot);
+            shooting = false; gunShotSounded = false;
+          }
+        } else {
+          if (shootCooldown > 0) {
+            shootCooldown -= delta;
+            if (shootCooldown < 0) shootCooldown = 0;
+          }
+        }
+      }
+
+      // --- Bullets animation ---
+      for (let i = 0; i < bullets.length; ++i) {
+        let b = bullets[i];
+        let dt = time - b.born;
+        if (dt > b.lifetime) {
+          scene.remove(b.mesh); bullets.splice(i, 1); --i; continue;
+        }
+        b.pos.addScaledVector(b.dir, 44 * delta);
+        b.mesh.position.copy(b.pos);
+        // Hit test
+        if (bulletHitTarget(b.pos, b.dir)) {
+          scene.remove(b.mesh); bullets.splice(i, 1); --i; continue;
+        }
+      }
+
+      // --- Breaking Animation for Targets ---
+      for (let i = 0; i < targets.length; ++i) {
+        const target = targets[i];
+        if (target.userData.state === 'breaking') {
+          const t = (time - target.userData.breakStart) / 0.28;
+          if (t < 1) {
+            let scale = 1 - t * 0.8;
+            target.scale.set(scale, scale, scale);
+            target.material.transparent = true;
+            target.material.opacity = 1 - t;
+          } else {
+            target.visible = false;
+            target.userData.state = 'waiting';
+            setTimeout(()=>spawnTarget(target), 450 + Math.random()*200);
+          }
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+    let gunReloaded = false, gunShotSounded = false;
+    animate();
+
+    // ----------- GRAPHICS MODE INIT -----------
+    graphicsMode.value = "low";
+    graphicsModeLabel.textContent = "Low";
+    graphicsHigh = false;
+    function setInitialGraphics() {
+      setGraphicsMode(graphicsHigh);
+      for (let t of targets) {
+        t.material.map = graphicsHigh ? bullseyeTexHi : bullseyeTex;
+        t.material.needsUpdate = true;
+      }
+    }
+    setInitialGraphics();
+
+    // ----------- WINDOW RESIZE -----------
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ----------- PLAY BUTTON -----------
+    document.getElementById('playbtn').onclick = () => {
+      mainMenu.classList.add('hidden');
+      setTimeout(()=>mainMenu.style.display="none", 400);
+      setTimeout(()=>controls.lock(), 500);
+    };
+  </script>
+
+  <script>
+    // ...Keep your previous settings, keybind, UI, and most logic as is...
+    // ----------- UNCHANGED CODE OMITTED FOR BREVITY (just append below) -----------
+
+    // ----------- SHADER MATERIALS FOR HIGH GRAPHICS -----------
+    // Toon-like ground
+    const toonGround = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+        }`,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float intensity = dot(vNormal, vec3(0.2, 1.0, 0.2));
+          float shade = smoothstep(0.27, 0.97, intensity);
+          vec3 color1 = vec3(0.62,0.84,0.62);
+          vec3 color2 = vec3(0.18,0.30,0.18);
+          gl_FragColor = vec4(mix(color2, color1, shade), 1.0);
+        }`,
+      side: THREE.DoubleSide
+    });
+    // Toon fence
+    const toonFence = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+        }`,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float intensity = dot(vNormal, vec3(0.09, 0.98, 0.09));
+          vec3 wood = mix(vec3(0.36,0.19,0.08), vec3(0.71,0.47,0.17), intensity);
+          gl_FragColor = vec4(wood, 1.0);
+        }`
+    });
+    // Toon bullseye
+    const toonTarget = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+        }`,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float d = abs(vNormal.z);
+          float r = smoothstep(0.3, 1.0, d);
+          vec3 base = mix(vec3(1.0,0.1,0.2), vec3(0.98,0.95,0.95), r);
+          gl_FragColor = vec4(base, 1.0);
+        }`
+    });
+
+    function setGraphicsMode(high) {
+      // Set shader style for high, classic for low
+      if (high) {
+        ground.material = toonGround;
+        for (let mesh of fenceMeshes) mesh.material = toonFence;
+        for (let t of targets) t.material = toonTarget;
+      } else {
+        ground.material = groundMat;
+        for (let mesh of fenceMeshes) mesh.material = fenceMat;
+        for (let t of targets) t.material = new THREE.MeshPhongMaterial({map: bullseyeTex});
+      }
+    }
+
+    // ----------- CROUCH IMPLEMENTATION -----------
+    let isCrouching = false;
+    const standHeight = 1.7, crouchHeight = 1.15, crouchSpeed = 0.16;
+    function doCrouch(pressed) {
+      isCrouching = pressed;
+    }
+    let crouchAnim = 0; // 0=stand, 1=crouch
+    window.addEventListener('keydown', e => {
+      if ((e.key === "c" || e.code === "KeyC") && !isCrouching) doCrouch(true);
+    });
+    window.addEventListener('keyup', e => {
+      if ((e.key === "c" || e.code === "KeyC") && isCrouching) doCrouch(false);
+    });
+
+    // ----------- IN ANIMATION LOOP, ADD CROUCHING CAMERA HEIGHT -----------
+    let prevTime = performance.now() / 1000;
+    function animate() {
+      requestAnimationFrame(animate);
+      // ...Unchanged code above...
+      const time = performance.now() / 1000;
+      const delta = Math.min(time - prevTime, 0.05);
+      prevTime = time;
+
+      // --- Animate crouch ---
+      let targetAnim = isCrouching ? 1 : 0;
+      let diff = targetAnim - crouchAnim;
+      crouchAnim += Math.sign(diff) * Math.min(Math.abs(diff), delta / crouchSpeed);
+      let camH = standHeight * (1-crouchAnim) + crouchHeight * crouchAnim;
+      if (camera.position.y !== camH) camera.position.y = camH;
+
+      // ...Continue unchanged movement, bobbing, weapons, etc...
+      // (Rest of your loop unchanged)
+    }
+
+    // ...rest of your unchanged code, including window resize, play button, etc...
+
+  </script>
+</body>
+</html>
